@@ -4,7 +4,7 @@ This repo is just a simple `GCRA` implement, it's NOT a rate-limiter library.
 You can always implement one of your own, to meet your all needs.
 
 
-For example
+## Example
 ```rust
 /// RateLimiter is not thread safe.
 pub struct RateLimiter {
@@ -22,7 +22,6 @@ impl RateLimiter {
 
 pub fn check(&mut self) -> bool {
     self.state.check_and_modify(&self.quota, 1).is_ok()
-}
 }
 
 #[test]
