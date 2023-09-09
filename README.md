@@ -20,8 +20,9 @@ impl RateLimiter {
         }
     }
 
-pub fn check(&mut self) -> bool {
-    self.state.check_and_modify(&self.quota, 1).is_ok()
+    pub fn check(&mut self) -> bool {
+        self.state.check_and_modify(&self.quota, 1).is_ok()
+    }
 }
 
 #[test]
