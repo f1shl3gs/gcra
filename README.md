@@ -26,7 +26,7 @@ impl RateLimiter {
 }
 
 #[test]
-fn chek() {
+fn check() {
     let quota = Quota::new(4, Duration::from_secs(4));
     let mut limiter = RateLimiter::new(quota);
 
