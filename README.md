@@ -9,7 +9,7 @@ You can always implement one of your own, to meet your all needs.
 /// RateLimiter is not thread safe.
 pub struct RateLimiter {
     quota: Quota,
-    state: GcraState,
+    state: State,
 }
 
 impl RateLimiter {
