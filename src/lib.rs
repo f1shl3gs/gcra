@@ -186,6 +186,7 @@ impl State {
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
+    
     use super::*;
 
     #[test]
