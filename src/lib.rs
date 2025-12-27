@@ -3,24 +3,23 @@ use std::time::{Duration, Instant};
 
 /// Defines the configuration for a GCRA rate limit.
 #[derive(Clone, Copy, Debug)]
-#[non_exhaustive]
 pub struct Quota {
     /// Amount of resources that are allowed in a given period.
-    pub resource_limit: u32,
+    limit: u32,
 
     /// The length of which to allow access to the resource.
-    pub period: Duration,
+    period: Duration,
 
     /// Incremental duration cost of a single resource check
-    pub emission_interval: Duration,
+    emission_interval: Duration,
 }
 
 impl Quota {
-    pub fn new(resource_limit: u32, period: Duration) -> Self {
-        let emission_interval = period / resource_limit;
+    pub fn new(limit: u32, period: Duration) -> Self {
+        let emission_interval = period / limit;
 
         Self {
-            resource_limit,
+            limit,
             period,
             emission_interval,
         }
@@ -57,13 +56,15 @@ impl Display for Error {
     }
 }
 
+impl std::error::Error for Error {}
+
 /// Holds the minimum amount of state necessary to implement a GCRA leaky buckets.
 /// Refer to: [understanding GCRA](https://blog.ian.stapletoncordas.co/2018/12/understanding-generic-cell-rate-limiting.html)
 #[derive(Default, Debug)]
 pub struct State {
     /// GCRA's Theoretical Arrival Time (**TAT**)
     /// An unset value signals a new state
-    pub tat: Option<Instant>,
+    tat: Option<Instant>,
 }
 
 impl State {
@@ -128,8 +129,7 @@ impl State {
     /// Simply passes the current Instant to [`revert_at()`]
     #[inline]
     pub fn revert(&mut self, rate_limit: &Quota, cost: u32) -> Result<(), Error> {
-        let arrived_at = Instant::now();
-        self.revert_at(rate_limit, arrived_at, cost)
+        self.revert_at(rate_limit, Instant::now(), cost)
     }
 
     /// Reverts rate_limit by cost, and updated our internal state.
@@ -171,15 +171,15 @@ impl State {
 
         let time_to_tat = match self.tat.and_then(|tat| tat.checked_duration_since(now)) {
             Some(duration_until) => duration_until.as_secs_f32(),
-            None => return rate_limit.resource_limit,
+            None => return rate_limit.limit,
         };
 
         // Logically this makes more sense as:
         //   consumed_resources = time_to_tat * (resource_limit/period)
         // but we run it this way because of Duration's arithmetic functions
         let consumed_resources =
-            (time_to_tat * rate_limit.resource_limit as f32) / rate_limit.period.as_secs_f32();
-        rate_limit.resource_limit - consumed_resources.ceil() as u32
+            (time_to_tat * rate_limit.limit as f32) / rate_limit.period.as_secs_f32();
+        rate_limit.limit - consumed_resources.ceil() as u32
     }
 }
 
@@ -450,7 +450,7 @@ mod tests {
             "request #1 should pass"
         );
 
-        let over_limit_cost = rate_limit.resource_limit + 1;
+        let over_limit_cost = rate_limit.limit + 1;
         match gcra.check_and_modify(&rate_limit, over_limit_cost) {
             Err(Error::DeniedIndefinitely(cost)) => {
                 assert_eq!(over_limit_cost, cost);
@@ -476,7 +476,7 @@ mod tests {
             "state should be modified and have a TAT in the future"
         );
 
-        let next_allowed_ts = match gcra.check_and_modify(&rate_limit, rate_limit.resource_limit) {
+        let next_allowed_ts = match gcra.check_and_modify(&rate_limit, rate_limit.limit) {
             Err(Error::DeniedUntil(next_allowed_at)) => next_allowed_at,
             _ => panic!("request #2 is only temporarily denied"),
         };
